@@ -1,0 +1,20 @@
+services:
+  algo-trace:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: algo-trace
+    ports:
+      - "3002:3001"
+    volumes:
+      - algo-trace-data:/app/data
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DATA_DIR=/app/data
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    restart: unless-stopped
+
+volumes:
+  algo-trace-data:
+    driver: local

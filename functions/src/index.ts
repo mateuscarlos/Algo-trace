@@ -65,6 +65,43 @@ async function verifyAuth(req: AuthRequest, res: express.Response, next: express
     }
 }
 
+// --- Audio Helpers ---
+/**
+ * Adiciona o cabeçalho WAV a um buffer PCM raw de 16-bit com 24kHz Mono.
+ * (O Gemini 2.5 TTS retorna raw L16 PCM rate=24000)
+ */
+function createWavHeader(pcmDataLen: number, sampleRate: number = 24000): Buffer {
+    const numChannels = 1;
+    const bitsPerSample = 16;
+    const byteRate = (sampleRate * numChannels * bitsPerSample) / 8;
+    const blockAlign = (numChannels * bitsPerSample) / 8;
+    const dataSize = pcmDataLen;
+    const chunkSize = 36 + dataSize;
+
+    const header = Buffer.alloc(44);
+
+    // "RIFF" chunk descriptor
+    header.write("RIFF", 0);
+    header.writeUInt32LE(chunkSize, 4);
+    header.write("WAVE", 8);
+
+    // "fmt " sub-chunk
+    header.write("fmt ", 12);
+    header.writeUInt32LE(16, 16); // Subchunk1Size (16 for PCM)
+    header.writeUInt16LE(1, 20); // AudioFormat (1 for PCM)
+    header.writeUInt16LE(numChannels, 22);
+    header.writeUInt32LE(sampleRate, 24);
+    header.writeUInt32LE(byteRate, 28);
+    header.writeUInt16LE(blockAlign, 32);
+    header.writeUInt16LE(bitsPerSample, 34);
+
+    // "data" sub-chunk
+    header.write("data", 36);
+    header.writeUInt32LE(dataSize, 40);
+
+    return header;
+}
+
 // --- Audiogeneration Background Task ---
 async function generateAndUploadAudio(traceId: string, traceObj: any) {
     if (!traceObj || !Array.isArray(traceObj.steps)) return;
@@ -84,8 +121,8 @@ async function generateAndUploadAudio(traceId: string, traceObj: any) {
             if (!step.description || step.audioUrl) continue;
 
             const text = step.description;
-            // Generate audio using Gemini 2.5 Flash setup for TTS
-            const url = `https://generativelanguage.googleapis.com/v1alpha/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+            // Generate audio using Gemini TTS model
+            const url = `https://generativelanguage.googleapis.com/v1alpha/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
             
             const reqBody = {
                 contents: [{
@@ -97,7 +134,7 @@ async function generateAndUploadAudio(traceId: string, traceObj: any) {
                     speechConfig: {
                         voiceConfig: {
                             prebuiltVoiceConfig: {
-                                voiceName: "Aoede" // Available Gemini voices: Aoede, Charon, Fenrir, Kore, Puck (Puck/Aoede are good defaults)
+                                voiceName: "Aoede" // Available Gemini voices: Aoede, Charon, Fenrir, Kore, Puck
                             }
                         }
                     }
@@ -120,13 +157,19 @@ async function generateAndUploadAudio(traceId: string, traceObj: any) {
             const inlineData = data?.candidates?.[0]?.content?.parts?.[0]?.inlineData;
             
             if (inlineData && inlineData.data) {
-                // The data is a base64 encoded string containing the audio bytes
-                const fileName = `traces_audio/${traceId}/step_${i}.wav`;
+                // The data is a base64 encoded string containing raw PCM bytes
+                const pcmBuffer = Buffer.from(inlineData.data, 'base64');
+                
+                // Construct a valid WAV file by prepending the 44-byte WAV header
+                const wavHeader = createWavHeader(pcmBuffer.length, 24000);
+                const wavBuffer = Buffer.concat([wavHeader, pcmBuffer]);
+
+                const fileName = `traces_audio/${traceId}/step_${i}.wav`; 
                 const file = bucket.file(fileName);
                 
                 // Save to storage
-                await file.save(Buffer.from(inlineData.data, 'base64'), {
-                    metadata: { contentType: inlineData.mimeType || "audio/wav" },
+                await file.save(wavBuffer, {
+                    metadata: { contentType: "audio/wav" },
                     public: true, // Make public to be readable by the frontend player
                 });
 

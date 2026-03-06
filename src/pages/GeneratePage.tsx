@@ -11,6 +11,7 @@ const LANGUAGES = [
     { value: 'javascript', label: 'JavaScript' },
     { value: 'typescript', label: 'TypeScript' },
     { value: 'java', label: 'Java' },
+    { value: 'csharp', label: 'C#' },
     { value: 'cpp', label: 'C++' },
     { value: 'c', label: 'C' },
     { value: 'go', label: 'Go' },

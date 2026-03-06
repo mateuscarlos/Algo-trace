@@ -83,6 +83,7 @@ export interface Step {
   description: string;
   structures: Structure[];
   codeLineHighlight?: number;
+  audioUrl?: string;
 }
 
 export interface Complexity {

@@ -5,6 +5,8 @@ import cors from "cors";
 
 admin.initializeApp();
 const db = admin.firestore();
+const storage = admin.storage();
+const bucket = storage.bucket();
 const tracesCollection = db.collection("traces");
 
 const app = express();
@@ -60,6 +62,88 @@ async function verifyAuth(req: AuthRequest, res: express.Response, next: express
         next();
     } catch {
         res.status(401).json({ error: "Token de autenticação inválido" });
+    }
+}
+
+// --- Audiogeneration Background Task ---
+async function generateAndUploadAudio(traceId: string, traceObj: any) {
+    if (!traceObj || !Array.isArray(traceObj.steps)) return;
+
+    try {
+        const steps = [...traceObj.steps];
+        let hasUpdates = false;
+
+        const apiKey = process.env.GEMINI_API_KEY;
+        if (!apiKey) {
+            console.error("GEMINI_API_KEY não configurada. Impossível gerar áudio.");
+            return;
+        }
+
+        for (let i = 0; i < steps.length; i++) {
+            const step = steps[i];
+            if (!step.description || step.audioUrl) continue;
+
+            const text = step.description;
+            // Generate audio using Gemini 2.5 Flash setup for TTS
+            const url = `https://generativelanguage.googleapis.com/v1alpha/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+            
+            const reqBody = {
+                contents: [{
+                    parts: [{ text }]
+                }],
+                generationConfig: {
+                    temperature: 0.3,
+                    responseModalities: ["AUDIO"],
+                    speechConfig: {
+                        voiceConfig: {
+                            prebuiltVoiceConfig: {
+                                voiceName: "Aoede" // Available Gemini voices: Aoede, Charon, Fenrir, Kore, Puck (Puck/Aoede are good defaults)
+                            }
+                        }
+                    }
+                }
+            };
+
+            const response = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(reqBody)
+            });
+
+            if (!response.ok) {
+                const errBody = await response.json().catch(() => ({}));
+                console.error(`Falha ao gerar aúdio do Gemini para o passo ${i}:`, errBody);
+                continue;
+            }
+
+            const data = await response.json() as any;
+            const inlineData = data?.candidates?.[0]?.content?.parts?.[0]?.inlineData;
+            
+            if (inlineData && inlineData.data) {
+                // The data is a base64 encoded string containing the audio bytes
+                const fileName = `traces_audio/${traceId}/step_${i}.wav`;
+                const file = bucket.file(fileName);
+                
+                // Save to storage
+                await file.save(Buffer.from(inlineData.data, 'base64'), {
+                    metadata: { contentType: inlineData.mimeType || "audio/wav" },
+                    public: true, // Make public to be readable by the frontend player
+                });
+
+                // Get public URL
+                const publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+                steps[i] = { ...step, audioUrl: publicUrl };
+                hasUpdates = true;
+            }
+        }
+
+        // Update firestore document if anything changed
+        if (hasUpdates) {
+            await tracesCollection.doc(traceId).update({ "trace.steps": steps });
+            console.log(`Audios gerados e anexados para o trace: ${traceId}`);
+        }
+    } catch (err) {
+        console.error(`Erro na background task de gerar aúdio para o trace ${traceId}:`, err);
     }
 }
 
@@ -119,6 +203,9 @@ app.post("/api/traces", async (req: AuthRequest, res) => {
 
         const docRef = await tracesCollection.add(newTrace);
         res.status(201).json({ id: docRef.id, ...newTrace });
+
+        // Trigger background audio generation
+        generateAndUploadAudio(docRef.id, newTrace.trace).catch(console.error);
     } catch (err) {
         console.error("Erro ao salvar trace:", JSON.stringify(err, Object.getOwnPropertyNames(err as object)));
         const message = err instanceof Error ? err.message : "Erro desconhecido";

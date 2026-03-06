@@ -85,11 +85,19 @@ export interface Step {
   codeLineHighlight?: number;
 }
 
+export interface Complexity {
+  time: string;
+  space: string;
+  details: string;
+}
+
 export interface AlgoTrace {
   title: string;
   steps: Step[];
   code: string;
   language: string;
+  complexity?: Complexity;
+  tradeoffs?: string;
 }
 
 export interface SavedTrace {

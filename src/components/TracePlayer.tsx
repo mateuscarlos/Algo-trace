@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, SkipBack, SkipForward, Play, Pause } from 'lucide-react';
+import { ChevronLeft, ChevronRight, SkipBack, SkipForward, Play, Pause, Zap, Activity, Cpu } from 'lucide-react';
 import type { AlgoTrace } from '../types';
 import { CodeViewer } from './CodeViewer';
 import { StructureRenderer } from './structures';
@@ -139,6 +139,46 @@ export function TracePlayer({ trace }: Props) {
       <p className="controls-hint">
         Use as setas do teclado ← → ou barra de espaço para navegar
       </p>
+
+      {/* Analysis Section */}
+      {(trace.complexity || trace.tradeoffs) && (
+        <div className="trace-analysis-section">
+          <div className="analysis-header">
+            <Zap size={18} className="analysis-icon" />
+            <h2>Análise do Algoritmo</h2>
+          </div>
+          
+          <div className="analysis-grid">
+            {trace.complexity && (
+               <div className="analysis-card complexity-card">
+                 <div className="card-header">
+                   <Activity size={16} />
+                   <h3>Complexidade (Big O)</h3>
+                 </div>
+                 <div className="complexity-badges">
+                   <span className="badge badge-time" title="Complexidade de Tempo">
+                     ⏳ O({trace.complexity.time.replace(/^O\((.*)\)$/, '$1')})
+                   </span>
+                   <span className="badge badge-space" title="Complexidade de Espaço">
+                     💾 O({trace.complexity.space.replace(/^O\((.*)\)$/, '$1')})
+                   </span>
+                 </div>
+                 <p className="analysis-details">{trace.complexity.details}</p>
+               </div>
+            )}
+
+            {trace.tradeoffs && (
+               <div className="analysis-card tradeoffs-card">
+                 <div className="card-header">
+                   <Cpu size={16} />
+                   <h3>Tradeoffs & Alternativas</h3>
+                 </div>
+                 <p className="analysis-details">{trace.tradeoffs}</p>
+               </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

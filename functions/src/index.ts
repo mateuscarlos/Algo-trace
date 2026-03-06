@@ -177,6 +177,12 @@ interface AlgoTrace {
   steps: Step[];       // Array de passos da execução
   code: string;        // O código-fonte original (exatamente como recebido)
   language: string;    // A linguagem de programação
+  complexity: {        // Análise de complexidade do algoritmo
+    time: string;      // Notação Big-O de tempo (ex: "O(n)")
+    space: string;     // Notação Big-O de espaço (ex: "O(1)")
+    details: string;   // Explicação concisa do porquê dessa complexidade
+  };
+  tradeoffs: string;   // Explicação dos tradeoffs dessa abordagem versus outras possíveis para este problema (ex: "O tempo é O(n), mas poderia ser O(log n) com busca binária, embora exigisse ordenação anterior...")
 }
 
 interface Step {

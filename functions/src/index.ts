@@ -21,6 +21,25 @@ interface SavedTrace {
     tags?: string[];
 }
 
+// --- Helpers ---
+
+/**
+ * Remove recursivamente valores `undefined` de objetos/arrays.
+ * Firestore rejeita qualquer campo com valor `undefined`.
+ */
+function sanitizeForFirestore(obj: unknown): unknown {
+    if (obj === undefined) return null;
+    if (obj === null || typeof obj !== "object") return obj;
+    if (Array.isArray(obj)) return obj.map(sanitizeForFirestore);
+    const result: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
+        if (value !== undefined) {
+            result[key] = sanitizeForFirestore(value);
+        }
+    }
+    return result;
+}
+
 // --- Auth Middleware ---
 interface AuthRequest extends express.Request {
     userId?: string;
@@ -89,19 +108,20 @@ app.post("/api/traces", async (req: AuthRequest, res) => {
     try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const newTrace: Record<string, any> = {
-            title,
-            trace,
+            title: sanitizeForFirestore(title),
+            trace: sanitizeForFirestore(trace),
             savedAt: new Date().toISOString(),
             userId: req.userId,
         };
-        if (category) newTrace.category = category;
-        if (tags && tags.length > 0) newTrace.tags = tags;
+        if (category) newTrace.category = sanitizeForFirestore(category);
+        if (tags && tags.length > 0) newTrace.tags = sanitizeForFirestore(tags);
 
         const docRef = await tracesCollection.add(newTrace);
         res.status(201).json({ id: docRef.id, ...newTrace });
     } catch (err) {
-        console.error("Erro ao salvar trace:", err);
-        res.status(500).json({ error: "Erro interno ao salvar o trace" });
+        console.error("Erro ao salvar trace:", JSON.stringify(err, Object.getOwnPropertyNames(err as object)));
+        const message = err instanceof Error ? err.message : "Erro desconhecido";
+        res.status(500).json({ error: `Erro interno ao salvar o trace: ${message}` });
     }
 });
 

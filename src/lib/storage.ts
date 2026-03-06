@@ -35,7 +35,7 @@ export async function saveTrace(title: string, trace: AlgoTrace, category?: stri
   return (await res.json()) as SavedTrace;
 }
 
-export async function updateTrace(id: string, updates: { title?: string; category?: string }): Promise<SavedTrace> {
+export async function updateTrace(id: string, updates: { title?: string; category?: string; tags?: string[] }): Promise<SavedTrace> {
   const headers = await getAuthHeaders();
   const res = await fetch(`${API_BASE}/traces/${id}`, {
     method: 'PATCH',

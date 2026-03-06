@@ -136,6 +136,88 @@
   margin-top: 2px;
 }
 
+/* Tags List */
+.tags-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.tag-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #a855f7;
+  background: rgba(168, 85, 247, 0.1);
+  border: 1px solid rgba(168, 85, 247, 0.2);
+  border-radius: 4px;
+  font-family: 'Inter', sans-serif;
+  transition: all 0.2s;
+}
+
+.tag-remove-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: #a855f7;
+  cursor: pointer;
+  padding: 0;
+  opacity: 0.6;
+  transition: all 0.2s;
+}
+
+.tag-remove-btn:hover {
+  opacity: 1;
+  background: rgba(168, 85, 247, 0.2);
+  color: #e9d5ff;
+}
+
+.add-tag-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  border: 1px dashed #475569;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 0;
+}
+
+.add-tag-btn:hover {
+  border-color: #a855f7;
+  color: #a855f7;
+  background: rgba(168, 85, 247, 0.05);
+}
+
+.edit-tag-inline {
+  gap: 4px;
+}
+
+.edit-tag-inline .edit-btn {
+  width: 22px;
+  height: 22px;
+}
+
+.edit-input-xs {
+  font-size: 0.75rem;
+  padding: 2px 6px;
+  min-width: 100px;
+}
+
 /* Not found */
 .not-found {
   text-align: center;

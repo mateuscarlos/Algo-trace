@@ -1,6 +1,6 @@
 import { useParams, Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Loader2, Pencil, Check, X, Tag } from 'lucide-react';
+import { ArrowLeft, Loader2, Pencil, Check, X, Tag, Plus } from 'lucide-react';
 import type { SavedTrace } from '../types';
 import { getTraceById, updateTrace } from '../lib/storage';
 import { TracePlayer } from '../components/TracePlayer';
@@ -14,6 +14,8 @@ export function ViewPage() {
   const [editTitle, setEditTitle] = useState('');
   const [editingCategory, setEditingCategory] = useState(false);
   const [editCategory, setEditCategory] = useState('');
+  const [editingTags, setEditingTags] = useState(false);
+  const [newTag, setNewTag] = useState('');
 
   useEffect(() => {
     if (!id) { setLoading(false); return; }
@@ -38,6 +40,38 @@ export function ViewPage() {
       const updated = await updateTrace(saved.id, { category: editCategory.trim() || undefined });
       setSaved(updated);
       setEditingCategory(false);
+    } catch { /* silently fail */ }
+  };
+
+  const handleAddTag = async () => {
+    if (!saved || !newTag.trim()) {
+      setEditingTags(false);
+      return;
+    }
+    const currentTags = saved.tags || [];
+    const tagToAdd = newTag.trim();
+    if (currentTags.includes(tagToAdd)) {
+      setNewTag('');
+      setEditingTags(false);
+      return;
+    }
+    
+    try {
+      const updatedTags = [...currentTags, tagToAdd];
+      const updated = await updateTrace(saved.id, { tags: updatedTags });
+      setSaved(updated);
+      setNewTag('');
+      setEditingTags(false);
+    } catch { /* silently fail */ }
+  };
+
+  const handleRemoveTag = async (tagToRemove: string) => {
+    if (!saved) return;
+    const currentTags = saved.tags || [];
+    const updatedTags = currentTags.filter(t => t !== tagToRemove);
+    try {
+      const updated = await updateTrace(saved.id, { tags: updatedTags });
+      setSaved(updated);
     } catch { /* silently fail */ }
   };
 
@@ -120,6 +154,49 @@ export function ViewPage() {
               <Pencil size={10} className="badge-edit-icon" />
             </button>
           )}
+
+          <div className="tags-list">
+            {(saved.tags || []).map(tag => (
+              <span key={tag} className="tag-badge">
+                {tag}
+                <button
+                  className="tag-remove-btn"
+                  onClick={() => handleRemoveTag(tag)}
+                  title="Remover tag"
+                >
+                  <X size={10} />
+                </button>
+              </span>
+            ))}
+            
+            {editingTags ? (
+              <div className="edit-inline edit-tag-inline">
+                <input
+                  value={newTag}
+                  onChange={(e) => setNewTag(e.target.value)}
+                  className="edit-input edit-input-xs"
+                  placeholder="Nova tag"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleAddTag();
+                    if (e.key === 'Escape') { setNewTag(''); setEditingTags(false); }
+                  }}
+                  onBlur={() => {
+                    if (!newTag.trim()) setEditingTags(false);
+                  }}
+                />
+                <button className="edit-btn save" onClick={handleAddTag} title="Adicionar"><Check size={12} /></button>
+              </div>
+            ) : (
+              <button
+                className="add-tag-btn"
+                onClick={() => setEditingTags(true)}
+                title="Adicionar tag"
+              >
+                <Plus size={12} />
+              </button>
+            )}
+          </div>
         </div>
       </div>
       <TracePlayer trace={saved.trace} />

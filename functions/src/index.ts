@@ -128,7 +128,7 @@ app.post("/api/traces", async (req: AuthRequest, res) => {
 
 // Atualizar título/categoria de um trace
 app.patch("/api/traces/:id", async (req: AuthRequest, res) => {
-    const { title, category } = req.body;
+    const { title, category, tags } = req.body;
     const docRef = tracesCollection.doc(req.params.id as string);
     const doc = await docRef.get();
     if (!doc.exists) {
@@ -143,6 +143,7 @@ app.patch("/api/traces/:id", async (req: AuthRequest, res) => {
     const updates: Record<string, unknown> = {};
     if (title !== undefined) updates.title = title;
     if (category !== undefined) updates.category = category;
+    if (tags !== undefined) updates.tags = tags;
 
     await docRef.update(updates);
     const updated = await docRef.get();

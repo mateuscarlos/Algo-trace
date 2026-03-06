@@ -141,6 +141,9 @@ async function generateAndUploadAudio(traceId: string, traceObj: any) {
                 }
             };
 
+            console.log(`[Áudio] Disparando requisição para URL: ${url.replace(apiKey, "***")}`);
+            console.log(`[Áudio] Payload:`, JSON.stringify(reqBody, null, 2));
+
             const response = await fetch(url, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },

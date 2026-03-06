@@ -214,29 +214,6 @@
   }
 }
 
-/* Volume Control */
-.volume-control-wrapper {
-  margin-left: auto; /* Push to the right end of the controls container */
-}
-
-.volume-btn {
-  background: transparent;
-  border-color: transparent;
-}
-
-.volume-btn:hover:not(:disabled) {
-  background: rgba(51, 65, 85, 0.5);
-}
-
-.volume-btn.muted {
-  color: #ef4444;
-}
-
-.volume-btn.muted:hover:not(:disabled) {
-  background: rgba(239, 68, 68, 0.1);
-  color: #f87171;
-}
-
 /* Analysis Section */
 .trace-analysis-section {
   margin-top: 48px;

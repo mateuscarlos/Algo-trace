@@ -1,5 +1,5 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, SkipBack, SkipForward, Play, Pause, Zap, Activity, Cpu, Volume2, VolumeX } from 'lucide-react';
+import { useState, useCallback, useEffect } from 'react';
+import { ChevronLeft, ChevronRight, SkipBack, SkipForward, Play, Pause, Zap, Activity, Cpu } from 'lucide-react';
 import type { AlgoTrace } from '../types';
 import { CodeViewer } from './CodeViewer';
 import { StructureRenderer } from './structures';
@@ -13,8 +13,6 @@ interface Props {
 export function TracePlayer({ trace }: Props) {
   const [currentStep, setCurrentStep] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const step = trace.steps[currentStep];
   const totalSteps = trace.steps.length;
@@ -65,44 +63,8 @@ export function TracePlayer({ trace }: Props) {
     return () => window.removeEventListener('keydown', handler);
   }, [goNext, goPrev]);
 
-  // Handle audio playback when step changes
-  useEffect(() => {
-    if (!audioRef.current) return;
-    
-    // Stop current audio
-    audioRef.current.pause();
-    audioRef.current.currentTime = 0;
-
-    if (!isMuted && step.audioUrl) {
-      audioRef.current.src = step.audioUrl;
-      audioRef.current.play().catch((err) => {
-        // Autoplay policy might block it until user interaction
-        console.warn("Audio autoplay blocked or failed:", err);
-      });
-    }
-  }, [currentStep, step.audioUrl, isMuted]);
-
-  // Handle mute toggle
-  const toggleMute = () => {
-    setIsMuted(prev => {
-      const newMuted = !prev;
-      if (newMuted && audioRef.current) {
-        audioRef.current.pause();
-      } else if (!newMuted && audioRef.current && step.audioUrl) {
-        audioRef.current.play().catch(console.warn);
-      }
-      return newMuted;
-    });
-  };
-
   return (
     <div className="trace-player">
-      {/* Hidden audio element */}
-      <audio ref={audioRef} onEnded={() => {
-         // Se estivermos em autoplay e o áudio terminar, e quisermos sicronizar, poderíamos avançar aqui.
-         // Mas como o autoplay usa timer (1500ms), deixamos independente por enquanto.
-      }} />
-
       <div className="trace-header">
         <h1 className="trace-title">{trace.title}</h1>
         <span className="trace-step-counter">
@@ -172,17 +134,6 @@ export function TracePlayer({ trace }: Props) {
         <button className="ctrl-btn" onClick={goLast} disabled={currentStep === totalSteps - 1} title="Último passo">
           <SkipForward size={18} />
         </button>
-        
-        {/* Toggle Vol */}
-        <div className="volume-control-wrapper">
-           <button 
-             className={`ctrl-btn volume-btn ${isMuted ? 'muted' : ''}`} 
-             onClick={toggleMute} 
-             title={isMuted ? 'Ativar Narração' : 'Desativar Narração'}
-           >
-             {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
-           </button>
-        </div>
       </div>
 
       <p className="controls-hint">

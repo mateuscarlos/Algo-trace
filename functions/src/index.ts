@@ -249,9 +249,6 @@ app.post("/api/traces", async (req: AuthRequest, res) => {
 
         const docRef = await tracesCollection.add(newTrace);
         res.status(201).json({ id: docRef.id, ...newTrace });
-
-        // Trigger background audio generation
-        generateAndUploadAudio(docRef.id, newTrace.trace).catch(console.error);
     } catch (err) {
         console.error("Erro ao salvar trace:", JSON.stringify(err, Object.getOwnPropertyNames(err as object)));
         const message = err instanceof Error ? err.message : "Erro desconhecido";

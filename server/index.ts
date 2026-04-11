@@ -3,7 +3,6 @@ import cors from 'cors';
 import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3001;
@@ -77,6 +76,14 @@ app.post('/api/traces', (req, res) => {
     res.status(400).json({ error: 'Campos "title" e "trace" são obrigatórios' });
     return;
   }
+  if (typeof title !== 'string' || title.length > 200) {
+    res.status(400).json({ error: 'Título inválido ou muito longo (max 200)' });
+    return;
+  }
+  if (category && (typeof category !== 'string' || category.length > 100)) {
+    res.status(400).json({ error: 'Categoria inválida ou muito longa (max 100)' });
+    return;
+  }
 
   const traces = readTraces();
   const newTrace: SavedTrace = {
@@ -95,6 +102,15 @@ app.post('/api/traces', (req, res) => {
 // Atualizar título/categoria de um trace
 app.patch('/api/traces/:id', (req, res) => {
   const { title, category } = req.body;
+  if (title !== undefined && (typeof title !== 'string' || title.length > 200)) {
+    res.status(400).json({ error: 'Título inválido ou muito longo (max 200)' });
+    return;
+  }
+  if (category !== undefined && (typeof category !== 'string' || category.length > 100)) {
+    res.status(400).json({ error: 'Categoria inválida ou muito longa (max 100)' });
+    return;
+  }
+
   const traces = readTraces();
   const trace = traces.find((t) => t.id === req.params.id);
   if (!trace) {
@@ -184,6 +200,14 @@ app.post('/api/generate', async (req, res) => {
     res.status(400).json({ error: 'Campos "code" e "language" são obrigatórios' });
     return;
   }
+  if (typeof code !== 'string' || code.length > 50000) {
+    res.status(400).json({ error: 'Código inválido ou muito longo (max 50KB)' });
+    return;
+  }
+  if (typeof language !== 'string' || language.length > 50) {
+    res.status(400).json({ error: 'Linguagem inválida ou muito longa (max 50)' });
+    return;
+  }
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -256,7 +280,7 @@ app.post('/api/generate', async (req, res) => {
           console.log(`  Sem resposta, tentando novamente...`);
           continue;
         }
-        res.status(502).json({ error: `A IA não retornou resultado após ${MAX_RETRIES} tentativas. Último erro: ${lastError}` });
+        res.status(502).json({ error: 'A IA não retornou resultado após múltiplas tentativas. Tente novamente mais tarde.' });
         return;
       }
 
@@ -302,19 +326,19 @@ app.post('/api/generate', async (req, res) => {
 
       if (message.includes('429') || message.includes('quota') || message.includes('rate')) {
         res.status(429).json({
-          error: 'Cota da API Gemini excedida. Aguarde alguns minutos e tente novamente.'
+          error: 'Cota da IA excedida. Aguarde alguns minutos e tente novamente.'
         });
         return;
       }
       if (message.includes('403') || message.includes('permission') || message.includes('API_KEY')) {
         res.status(403).json({
-          error: 'Chave de API inválida ou sem permissão. Verifique sua GEMINI_API_KEY.'
+          error: 'Serviço temporariamente indisponível devido a um erro de configuração.'
         });
         return;
       }
 
       if (attempt >= MAX_RETRIES) {
-        res.status(500).json({ error: `Falha ao gerar trace: ${message}` });
+        res.status(500).json({ error: 'Falha ao gerar trace devido a um erro interno.' });
         return;
       }
     }

@@ -5,19 +5,20 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:server": "npx tsx server/index.ts",
+    "dev:server": "tsx server/index.ts",
     "build": "tsc -b && vite build",
     "build:server": "tsc -p tsconfig.server.json",
     "start": "node server-dist/index.js",
     "lint": "eslint .",
-    "test": "node --experimental-strip-types --test src/lib/translate.test.ts",
+    "test": "node --experimental-strip-types --test src/lib/translate.test.ts && tsx --test server/trace-store.test.ts",
+    "migrate:firestore": "tsx scripts/migrate-firestore.ts",
     "preview": "vite preview"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.24.1",
-    "cors": "^2.8.6",
+    "dotenv": "^18.0.5",
     "express": "^5.2.1",
     "firebase": "^12.10.0",
+    "firebase-admin": "^14.5.0",
     "lucide-react": "^0.575.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
@@ -25,7 +26,6 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
-    "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.7",
@@ -35,6 +35,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
+    "tsx": "^4.23.15",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.48.0",
     "vite": "^7.3.1"

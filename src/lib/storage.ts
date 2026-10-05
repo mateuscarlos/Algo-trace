@@ -9,19 +9,33 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
   const token = await user.getIdToken();
   return {
     'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}`,
+    Authorization: `Bearer ${token}`,
   };
 }
 
-export async function getSavedTraces(): Promise<SavedTrace[]> {
+async function throwApiError(response: Response, fallback: string): Promise<never> {
+  let message = fallback;
   try {
-    const headers = await getAuthHeaders();
-    const res = await fetch(`${API_BASE}/traces`, { headers });
-    if (!res.ok) return [];
-    return (await res.json()) as SavedTrace[];
+    const body: unknown = await response.json();
+    if (
+      typeof body === 'object'
+      && body !== null
+      && 'error' in body
+      && typeof body.error === 'string'
+    ) {
+      message = body.error;
+    }
   } catch {
-    return [];
+    // Keep the endpoint-specific fallback when the response has no JSON body.
   }
+  throw new Error(message);
+}
+
+export async function getSavedTraces(): Promise<SavedTrace[]> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/traces`, { headers });
+  if (!res.ok) await throwApiError(res, 'Falha ao carregar os traces');
+  return (await res.json()) as SavedTrace[];
 }
 
 export async function saveTrace(title: string, trace: AlgoTrace, category?: string, tags?: string[]): Promise<SavedTrace> {
@@ -31,7 +45,7 @@ export async function saveTrace(title: string, trace: AlgoTrace, category?: stri
     headers,
     body: JSON.stringify({ title, trace, category, tags }),
   });
-  if (!res.ok) throw new Error('Falha ao salvar trace');
+  if (!res.ok) await throwApiError(res, 'Falha ao salvar trace');
   return (await res.json()) as SavedTrace;
 }
 
@@ -42,24 +56,22 @@ export async function updateTrace(id: string, updates: { title?: string; categor
     headers,
     body: JSON.stringify(updates),
   });
-  if (!res.ok) throw new Error('Falha ao atualizar trace');
+  if (!res.ok) await throwApiError(res, 'Falha ao atualizar trace');
   return (await res.json()) as SavedTrace;
 }
 
 export async function deleteTrace(id: string): Promise<void> {
   const headers = await getAuthHeaders();
-  await fetch(`${API_BASE}/traces/${id}`, { method: 'DELETE', headers });
+  const res = await fetch(`${API_BASE}/traces/${id}`, { method: 'DELETE', headers });
+  if (!res.ok) await throwApiError(res, 'Falha ao excluir trace');
 }
 
 export async function getTraceById(id: string): Promise<SavedTrace | undefined> {
-  try {
-    const headers = await getAuthHeaders();
-    const res = await fetch(`${API_BASE}/traces/${id}`, { headers });
-    if (!res.ok) return undefined;
-    return (await res.json()) as SavedTrace;
-  } catch {
-    return undefined;
-  }
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/traces/${id}`, { headers });
+  if (res.status === 404) return undefined;
+  if (!res.ok) await throwApiError(res, 'Falha ao carregar o trace');
+  return (await res.json()) as SavedTrace;
 }
 
 export async function generateTraceFromCode(code: string, language: string): Promise<AlgoTrace> {
@@ -70,10 +82,8 @@ export async function generateTraceFromCode(code: string, language: string): Pro
     body: JSON.stringify({ code, language }),
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: 'Erro desconhecido' }));
-    throw new Error(err.error || 'Falha ao gerar trace');
+    await throwApiError(res, 'Falha ao gerar trace');
   }
   return (await res.json()) as AlgoTrace;
 }
-
 

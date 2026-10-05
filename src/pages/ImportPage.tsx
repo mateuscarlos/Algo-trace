@@ -149,8 +149,8 @@ export function ImportPage() {
     try {
       const saved = await saveTrace(parsedTrace.title, parsedTrace);
       navigate(`/view/${saved.id}`);
-    } catch {
-      setError('Erro ao salvar o algoritmo. Tente novamente.');
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Erro ao salvar o algoritmo.');
     }
   };
 

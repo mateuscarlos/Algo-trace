@@ -8,30 +8,48 @@ import './LibraryPage.css';
 export function LibraryPage() {
   const [traces, setTraces] = useState<SavedTrace[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
 
   const loadTraces = useCallback(async () => {
     setLoading(true);
-    const data = await getSavedTraces();
-    setTraces(data);
-    setLoading(false);
+    setError('');
+    try {
+      const data = await getSavedTraces();
+      setTraces(data);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : 'Falha ao carregar a biblioteca.');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
     let cancelled = false;
-    getSavedTraces().then((data) => {
-      if (!cancelled) {
-        setTraces(data);
-        setLoading(false);
-      }
-    });
+    setLoading(true);
+    getSavedTraces()
+      .then((data) => {
+        if (!cancelled) setTraces(data);
+      })
+      .catch((loadError: unknown) => {
+        if (!cancelled) {
+          setError(loadError instanceof Error ? loadError.message : 'Falha ao carregar a biblioteca.');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
     return () => { cancelled = true; };
   }, []);
 
   const handleDelete = async (id: string) => {
     if (!confirm('Tem certeza que deseja excluir este algoritmo?')) return;
-    await deleteTrace(id);
-    await loadTraces();
+    try {
+      await deleteTrace(id);
+      await loadTraces();
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : 'Falha ao excluir o algoritmo.');
+    }
   };
 
   const categories = useMemo(() => {
@@ -71,10 +89,17 @@ export function LibraryPage() {
         </Link>
       </div>
 
+      {error && <p role="alert" className="error-message">{error}</p>}
+
       {loading ? (
         <div className="empty-state">
           <Loader2 size={48} className="spinner" />
           <p>Carregando algoritmos...</p>
+        </div>
+      ) : error && traces.length === 0 ? (
+        <div className="empty-state">
+          <p role="alert">{error}</p>
+          <button className="btn btn-secondary" onClick={loadTraces}>Tentar novamente</button>
         </div>
       ) : traces.length === 0 ? (
         <div className="empty-state">
@@ -149,4 +174,3 @@ export function LibraryPage() {
     </div>
   );
 }
-

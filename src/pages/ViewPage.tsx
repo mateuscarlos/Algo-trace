@@ -9,18 +9,29 @@ import './ViewPage.css';
 export function ViewPage() {
   const { id } = useParams<{ id: string }>();
   const [saved, setSaved] = useState<SavedTrace | undefined>(undefined);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(Boolean(id));
+  const [error, setError] = useState('');
   const [editingTitle, setEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState('');
   const [editingCategory, setEditingCategory] = useState(false);
   const [editCategory, setEditCategory] = useState('');
 
   useEffect(() => {
-    if (!id) { setLoading(false); return; }
-    getTraceById(id).then((data) => {
-      setSaved(data);
-      setLoading(false);
-    });
+    if (!id) return;
+    let cancelled = false;
+    getTraceById(id)
+      .then((data) => {
+        if (!cancelled) setSaved(data);
+      })
+      .catch((loadError: unknown) => {
+        if (!cancelled) {
+          setError(loadError instanceof Error ? loadError.message : 'Falha ao carregar o algoritmo.');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
   }, [id]);
 
   const handleSaveTitle = async () => {
@@ -29,7 +40,10 @@ export function ViewPage() {
       const updated = await updateTrace(saved.id, { title: editTitle.trim() });
       setSaved(updated);
       setEditingTitle(false);
-    } catch { /* silently fail */ }
+      setError('');
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Falha ao atualizar o título.');
+    }
   };
 
   const handleSaveCategory = async () => {
@@ -38,7 +52,10 @@ export function ViewPage() {
       const updated = await updateTrace(saved.id, { category: editCategory.trim() || undefined });
       setSaved(updated);
       setEditingCategory(false);
-    } catch { /* silently fail */ }
+      setError('');
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Falha ao atualizar a categoria.');
+    }
   };
 
   if (loading) {
@@ -56,8 +73,8 @@ export function ViewPage() {
     return (
       <div className="view-page">
         <div className="not-found">
-          <h2>Algoritmo não encontrado</h2>
-          <p>O algoritmo solicitado não existe ou foi removido.</p>
+          <h2>{error ? 'Não foi possível carregar o algoritmo' : 'Algoritmo não encontrado'}</h2>
+          <p>{error || 'O algoritmo solicitado não existe ou foi removido.'}</p>
           <Link to="/library" className="btn btn-primary">Voltar à Biblioteca</Link>
         </div>
       </div>
@@ -122,8 +139,8 @@ export function ViewPage() {
           )}
         </div>
       </div>
+      {error && <p role="alert" className="error-message">{error}</p>}
       <TracePlayer trace={saved.trace} />
     </div>
   );
 }
-

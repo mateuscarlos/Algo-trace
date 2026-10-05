@@ -81,8 +81,8 @@ export function GeneratePage() {
             const titleToSave = customTitle.trim() || generatedTrace.title;
             const saved = await saveTrace(titleToSave, generatedTrace, category.trim() || undefined);
             navigate(`/view/${saved.id}`);
-        } catch {
-            setError('Erro ao salvar o algoritmo. Tente novamente.');
+        } catch (saveError) {
+            setError(saveError instanceof Error ? saveError.message : 'Erro ao salvar o algoritmo.');
         }
     };
 
@@ -223,4 +223,3 @@ export function GeneratePage() {
         </div>
     );
 }
-
